@@ -2,6 +2,7 @@ import subprocess
 import threading
 from sys import stderr
 
+from discord import TextChannel
 from discord.errors import ClientException
 from discord.sinks.core import Sink, default_filters, Filters
 from discord.player import FFmpegAudio, _log, CREATE_NO_WINDOW
@@ -10,6 +11,10 @@ from discord.opus import Encoder as OpusEncoder
 from discord.utils import MISSING
 from pyVoIP.VoIP import VoIPCall, CallState
 from typing import IO, Any
+
+
+async def stub_callback(sink, channel: TextChannel, *args):
+    return
 
 
 class FFmpegRTPSource(FFmpegAudio):

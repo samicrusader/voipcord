@@ -3,7 +3,7 @@ import discord
 import os
 import yaml
 from config import Settings
-from audiosource import FFmpegRTPSource, FFmpegRTPSink
+from audiosource import FFmpegRTPSource, FFmpegRTPSink, stub_callback
 from pyVoIP.VoIP import VoIPPhone, InvalidStateError, CallState, VoIPCall
 
 if os.environ.get("VOIPCORD_ENVCONFIG"):
@@ -45,8 +45,6 @@ async def on_application_command_error(ctx: discord.ApplicationContext, error):
     raise error
 
 
-async def stub_callback(sink, channel: discord.TextChannel, *args):
-    return
 
 
 @voip_commands.command(name='call', description='call number', ephemeral=True,
