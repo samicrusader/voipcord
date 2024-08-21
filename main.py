@@ -17,14 +17,22 @@ else:
     settings = Settings()
 
 print('VoIPcord\nhttps://github.com/samicrusader/voipcord', end='\n--\n')
-phone = VoIPPhone(server=settings.voip.server, port=settings.voip.port, username=settings.voip.username,
-                  password=settings.voip.password)
 
+loop = asyncio.new_event_loop()
 intents = discord.Intents.default()
 intents.members = True
 intents.messages = True
 intents.message_content = True
-client = discord.Bot(test_guilds=[settings.discord.home_guild_id], intents=intents, prefix='!')
+
+def incoming_stub(call: VoIPCall):
+    future = asyncio.run_coroutine_threadsafe(incoming(call), loop)
+    return future.result()
+
+
+client = discord.Bot(test_guilds=[settings.discord.home_guild_id], intents=intents, prefix='!', loop=loop)
+phone = VoIPPhone(server=settings.voip.server, port=settings.voip.port, username=settings.voip.username,
+                  password=settings.voip.password, callCallback=incoming_stub)
+
 voip_commands = client.create_group('phone', 'Telephony commands')
 mgmt_commands = client.create_group('voipcord', 'Management commands')
 connections = {}
@@ -79,6 +87,32 @@ async def dial(ctx, number: discord.Option(discord.SlashCommandOptionType.string
             await asyncio.sleep(0.1)
     except InvalidStateError as e:
         await ctx.respond('Caller disconnected.', ephemeral=True)
+        return
+
+
+async def incoming(call: VoIPCall):
+    channel = client.get_channel(settings.discord.default_text_channel_id)
+    await channel.send('incoming call, join vc in 5s')
+    await asyncio.sleep(5)
+    # setup voice
+    vc = client.get_channel(settings.discord.default_voice_channel_id)
+    if not vc.members:
+        await channel.send('hanging up')
+        await asyncio.to_thread(call.deny)
+    vc = await vc.connect()
+    connections.update({vc.guild.id: vc})
+    # caller answered, shit out call state and setup audio
+    await asyncio.to_thread(call.answer)
+    try:
+        await channel.send('Call answered!')
+        vc.start_recording(FFmpegRTPSink(call), stub_callback, vc)
+        source = FFmpegRTPSource(source=call)
+        vc.play(source)
+        calls.update({vc.guild.id: call})
+        while call.state == CallState.ANSWERED:
+            await asyncio.sleep(0.1)
+    except InvalidStateError as e:
+        await channel.send('Caller disconnected.')
         return
 
 

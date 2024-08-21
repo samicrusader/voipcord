@@ -12,6 +12,8 @@ class VoIPSettings(BaseModel):
 
 class DiscordConfig(BaseModel):
     home_guild_id: int
+    default_text_channel_id: int
+    default_voice_channel_id: int
     token: str
 
 
